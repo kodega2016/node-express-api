@@ -12,9 +12,16 @@ connectDb();
 
 const Bootcamp = require("./models/Bootcamp");
 const Course = require("./models/Course");
+const Review = require("./models/Review");
+const User = require("./models/User");
 
 const importData = async (req, res) => {
   console.log("Importing data...");
+
+  const users = JSON.parse(fs.readFileSync(`${__dirname}/_data/users.json`));
+
+  await User.create(users);
+
   const bootcamps = JSON.parse(
     fs.readFileSync(`${__dirname}/_data/bootcamps.json`)
   );
@@ -26,12 +33,20 @@ const importData = async (req, res) => {
 
   await Course.create(courses);
 
+  const reviews = JSON.parse(
+    fs.readFileSync(`${__dirname}/_data/reviews.json`)
+  );
+
+  await Review.create(reviews);
+
   process.exit();
 };
 const clearData = async (req, res) => {
   console.log("Clearing data...");
+  await User.deleteMany();
   await Bootcamp.deleteMany();
   await Course.deleteMany();
+  await Review.deleteMany();
   process.exit();
 };
 

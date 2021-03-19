@@ -5,7 +5,12 @@ const errorHandler = require("./middleware/error");
 const fileupload = require("express-fileupload");
 const path = require("path");
 const cookieParser = require("cookie-parser");
-const sendMail = require("./utils/sendmail");
+const mongoSanitize = require("express-mongo-sanitize");
+const helmet = require("helmet");
+const xss = require("xss-clean");
+const rateLimit = require("express-rate-limit");
+const hpp = require("hpp");
+const cors = require("cors");
 
 //Load env variables
 dotenv.config({
@@ -27,29 +32,32 @@ app.get("/", (req, res) => {
   res.send("It is working...");
 });
 
-app.get("/test", async (req, res) => {
-  try {
-    const loc = await sendEmail({
-      to: "khadga@gmail.com",
-      subject: "Forgot password",
-      message: "Reset password",
-    });
-    res.send(loc);
-  } catch (e) {
-    res.send(e);
-  }
+//Sanitize data
+app.use(mongoSanitize());
+//Set security header
+app.use(helmet());
+//Xss-clean
+app.use(xss());
+//set rate limit
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
 });
+app.use(limiter);
+//Set hpp
+app.use(hpp());
+//Set cors
+app.use(cors());
 
 const auth = require("./routes/auth");
 const bootcamps = require("./routes/bootcamps");
 const courses = require("./routes/courses");
+const users = require("./routes/users");
 
-const geocoder = require("./utils/geocoder");
-const sendEmail = require("./utils/sendmail");
 app.use("/api/v1/auth", auth);
+app.use("/api/v1/users", users);
 app.use("/api/v1/bootcamps", bootcamps);
 app.use("/api/v1/courses", courses);
-
 app.use(errorHandler);
 
 const port = process.env.PORT || 3000;

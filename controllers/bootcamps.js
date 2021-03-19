@@ -4,10 +4,16 @@ const asyncHandler = require("../middleware/async");
 const geocoder = require("../utils/geocoder");
 const path = require("path");
 
+// @desc      Get all bootcamps
+// @route     POST /api/v1/bootcamps
+// @access    Public
 exports.getAllBootcamps = asyncHandler(async (req, res) => {
   res.status(200).json(res.advancedResults);
 });
 
+// @desc      Get a bootcamp
+// @route     POST /api/v1/bootcamps/:id
+// @access    Public
 exports.getBootcamp = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const bootcamp = await Bootcamp.findById(id);
@@ -20,6 +26,10 @@ exports.getBootcamp = asyncHandler(async (req, res, next) => {
     bootcamp,
   });
 });
+
+// @desc      Create a bootcamp
+// @route     POST /api/v1/bootcamps
+// @access    Private
 
 exports.createBootcamp = asyncHandler(async (req, res, next) => {
   const {
@@ -72,6 +82,9 @@ exports.createBootcamp = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc      Update a bootcamp
+// @route     PUT /api/v1/bootcamps/:id
+// @access    Private
 exports.updateBootcamp = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const {
@@ -132,6 +145,10 @@ exports.updateBootcamp = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc      Delete a bootcamp
+// @route     DELETE /api/v1/bootcamps/:id
+// @access    Private
+
 exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
@@ -154,6 +171,10 @@ exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc      Get all bootcamps within a radius
+// @route     POST /api/v1/bootcamps/:zipcode/:radius
+// @access    Public
+
 exports.getBootcampsinRadius = asyncHandler(async (req, res, next) => {
   const { zipcode, distance } = req.params;
   const loc = await geocoder.geocode(zipcode);
@@ -175,6 +196,10 @@ exports.getBootcampsinRadius = asyncHandler(async (req, res, next) => {
     data: bootcamps,
   });
 });
+
+// @desc      Upload image of a bootcamp
+// @route     PUT /api/v1/bootcamps/:id/photo
+// @access    Private
 
 exports.bootcampPhotoUpload = asyncHandler(async (req, res, next) => {
   const { id } = req.params;

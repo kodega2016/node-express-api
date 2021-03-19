@@ -4,6 +4,9 @@ const User = require("../models/User");
 const sendEmail = require("../utils/sendmail");
 const crypto = require("crypto");
 
+// @desc      Login user
+// @route     POST /api/v1/auth/login
+// @access    Public
 exports.login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -32,6 +35,10 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   return sendTokenResponse(user, 200, res);
 });
+
+// @desc      Register user
+// @route     POST /api/v1/auth/register
+// @access    Public
 exports.register = asyncHandler(async (req, res, next) => {
   const { name, email, password } = req.body;
 
@@ -85,6 +92,9 @@ const sendTokenResponse = (user, statusCode, res) => {
   });
 };
 
+// @desc      Get current user
+// @route     POST /api/v1/auth/me
+// @access    Private
 exports.getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
 
@@ -94,6 +104,10 @@ exports.getMe = asyncHandler(async (req, res) => {
     data: user,
   });
 });
+
+// @desc      Forgot password
+// @route     POST /api/v1/auth/forgot-password
+// @access    Public
 
 exports.forgotPassword = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
@@ -130,6 +144,10 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   }
 });
 
+// @desc      Reset password
+// @route     POST /api/v1/auth/reset-password/:resetToken
+// @access    Public
+
 exports.resetPassword = asyncHandler(async (req, res, next) => {
   if (!req.body.password) return next(new ErrorResponse("Enter password", 400));
 
@@ -151,6 +169,10 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   return sendTokenResponse(user, 200, res);
 });
 
+// @desc      Update user info
+// @route     POST /api/v1/auth/update-info
+// @access    Private
+
 exports.updateDetail = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.user.id,
@@ -169,3 +191,19 @@ exports.updateDetail = asyncHandler(async (req, res) => {
     data: user,
   });
 });
+
+// @desc      Logout user
+// @route     POST /api/v1/auth/logout
+// @access    Private
+exports.logout = (req, res) => {
+  res.cookie("token", "none", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    msg: "User is logged out successfully.",
+    data: null,
+  });
+};
