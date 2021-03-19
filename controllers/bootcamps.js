@@ -2,73 +2,17 @@ const Bootcamp = require("../models/Bootcamp");
 const ErrorResponse = require("../utils/errorResponse");
 const asyncHandler = require("../middleware/async");
 const geocoder = require("../utils/geocoder");
+const path = require("path");
 
 exports.getAllBootcamps = asyncHandler(async (req, res) => {
-  let query;
-
-  const reqQuery = { ...req.query };
-
-  const removeFields = ["select", "sort", "page", "limit"];
-
-  removeFields.forEach((param) => delete reqQuery[param]);
-
-  let queryStr = JSON.stringify(reqQuery);
-
-  queryStr = queryStr.replace(
-    /\b(gt|gte|lt|lte|in)\b/g,
-    (match) => `$${match}`
-  );
-
-  query = Bootcamp.find(JSON.parse(queryStr));
-
-  if (req.query.select) {
-    const fields = req.query.select.split(",").join(" ");
-    query = query.select(fields);
-  }
-  if (req.query.sort) {
-    const sortBy = req.query.sort.split(",").join(" ");
-    query = query.sort(sortBy);
-  } else {
-    query = query.sort("-createdAt");
-  }
-
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 100;
-  const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const total = await Bootcamp.countDocuments();
-
-  query = query.skip(startIndex).limit(limit);
-  const bootcamps = await query;
-
-  const pagination = {};
-  if (endIndex < total) {
-    pagination.next = {
-      page: page + 1,
-      limit,
-    };
-  }
-
-  if (startIndex > 0) {
-    pagination.prev = {
-      page: page - 1,
-      limit,
-    };
-  }
-
-  res.status(200).json({
-    success: true,
-    msg: "Bootcamps fetched successfully.",
-    bootcamps,
-    pagination,
-  });
+  res.status(200).json(res.advancedResults);
 });
 
 exports.getBootcamp = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const bootcamp = await Bootcamp.findById(id);
   if (!bootcamp)
-    return next(new ErrorResponse(`Bootcamp with id ${id} found.`, 401));
+    return next(new ErrorResponse(`Bootcamp with id ${id} found.`, 404));
 
   res.status(200).json({
     success: true,
@@ -95,6 +39,14 @@ exports.createBootcamp = asyncHandler(async (req, res, next) => {
     acceptGi,
   } = req.body;
 
+  const publishedBootcamp = await Bootcamp.findOne({ user: req.user.id });
+
+  if (publishedBootcamp && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`The user has already published a bootcamp`, 400)
+    );
+  }
+
   const bootcamp = await Bootcamp.create({
     name,
     description,
@@ -110,6 +62,7 @@ exports.createBootcamp = asyncHandler(async (req, res, next) => {
     jobAssistance,
     jobGuarantee,
     acceptGi,
+    user: req.user.id,
   });
 
   res.status(201).json({
@@ -155,6 +108,7 @@ exports.updateBootcamp = asyncHandler(async (req, res, next) => {
       jobAssistance,
       jobGuarantee,
       acceptGi,
+      user: req.user.id,
     },
     {
       new: true,
@@ -163,7 +117,13 @@ exports.updateBootcamp = asyncHandler(async (req, res, next) => {
   );
 
   if (!bootcamp)
-    return next(new ErrorResponse(`Bootcamp with id ${id} found.`, 401));
+    return next(new ErrorResponse(`Bootcamp with id ${id} found.`, 404));
+
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`User is not authorized to perform this action.`, 400)
+    );
+  }
 
   res.status(200).json({
     success: true,
@@ -177,7 +137,13 @@ exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
 
   let bootcamp = await Bootcamp.findById(id);
 
-  if (!bootcamp) return next(new ErrorResponse(`Bootcamp with id found.`, 401));
+  if (!bootcamp) return next(new ErrorResponse(`Bootcamp with id found.`, 404));
+
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`User is not authorized to perform this action.`, 400)
+    );
+  }
 
   await bootcamp.delete();
 
@@ -207,5 +173,51 @@ exports.getBootcampsinRadius = asyncHandler(async (req, res, next) => {
     success: true,
     msg: "Bootcamp is fetched",
     data: bootcamps,
+  });
+});
+
+exports.bootcampPhotoUpload = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  let bootcamp = await Bootcamp.findById(id);
+
+  if (!bootcamp) return next(new ErrorResponse(`Bootcamp with id found.`, 404));
+
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`User is not authorized to perform this action.`, 400)
+    );
+  }
+
+  if (!req.files) {
+    return next(new ErrorResponse(`Please upload a file`, 400));
+  }
+
+  const file = req.files.file;
+
+  if (!file.mimetype.startsWith("image")) {
+    return next(new ErrorResponse(`Please select a image file`, 400));
+  }
+  if (file.size > process.env.MAX_FILE_UPLOAD) {
+    return next(
+      new ErrorResponse(
+        `Please select a image file less than ${process.env.MAX_FILE_UPLOAD}`,
+        400
+      )
+    );
+  }
+
+  file.name = `photo_${bootcamp._id}${path.parse(file.name).ext}`;
+
+  file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async (err) => {
+    if (err) {
+      new ErrorResponse(`Problem with file upload`, 500);
+    }
+    await Bootcamp.findByIdAndUpdate(req.params.id, { photo: file.name });
+    res.status(200).json({
+      success: true,
+      data: file.name,
+      msg: "Photo uploaded successfully.",
+    });
   });
 });

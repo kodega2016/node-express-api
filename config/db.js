@@ -9,11 +9,13 @@ const connectDb = async () => {
       {
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        useCreateIndex: true,
       }
     );
     console.log(`Database connection is made ${conn.connection.name}`);
   } catch (e) {
     console.log("Failed to connect to DB");
+    console.log(e);
     throw e;
   }
 };

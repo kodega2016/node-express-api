@@ -2,6 +2,10 @@ const express = require("express");
 const dotenv = require("dotenv");
 const connectDb = require("./config/db");
 const errorHandler = require("./middleware/error");
+const fileupload = require("express-fileupload");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const sendMail = require("./utils/sendmail");
 
 //Load env variables
 dotenv.config({
@@ -13,6 +17,11 @@ const app = express();
 //Express body parser
 app.use(express.json());
 
+app.use(fileupload());
+app.use(express.static(path.join(__dirname, "public")));
+
+app.use(cookieParser());
+
 connectDb();
 app.get("/", (req, res) => {
   res.send("It is working...");
@@ -20,16 +29,26 @@ app.get("/", (req, res) => {
 
 app.get("/test", async (req, res) => {
   try {
-    const loc = await geocoder.geocode("45 Upper College Rd Kingston RI 02881");
+    const loc = await sendEmail({
+      to: "khadga@gmail.com",
+      subject: "Forgot password",
+      message: "Reset password",
+    });
     res.send(loc);
   } catch (e) {
     res.send(e);
   }
 });
 
+const auth = require("./routes/auth");
 const bootcamps = require("./routes/bootcamps");
+const courses = require("./routes/courses");
+
 const geocoder = require("./utils/geocoder");
+const sendEmail = require("./utils/sendmail");
+app.use("/api/v1/auth", auth);
 app.use("/api/v1/bootcamps", bootcamps);
+app.use("/api/v1/courses", courses);
 
 app.use(errorHandler);
 
